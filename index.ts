@@ -21,6 +21,8 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 interface ModeConfig {
   description: string;
   model: string | null;
+  provider: string | null;
+  thinking: string | null;
   maxTurns: number | null;
 }
 
@@ -41,11 +43,15 @@ const DEFAULT_MODES: Record<string, ModeConfig> = {
   baseline: {
     description: "Default mode. Chat, quick tasks, routine work.",
     model: null,
+    provider: null,
+    thinking: null,
     maxTurns: null,
   },
   focused: {
     description: "Extended reasoning. Debugging, multi-step analysis, careful thinking.",
-    model: null,
+    model: "claude-opus-4.6",
+    provider: "anthropic",
+    thinking: null,
     maxTurns: 4,
   },
 };
@@ -152,7 +158,6 @@ export default definePluginEntry({
               };
             }
             state.turnsRemaining = currentModeConfig.maxTurns;
-            console.log(`[mode-switcher] extend: ${state.currentMode}, turnsRemaining reset to ${state.turnsRemaining}, session=${sessionKey}`);
             return {
               content: [{
                 type: "text" as const,
@@ -179,7 +184,7 @@ export default definePluginEntry({
           state.reason = reason;
           state.activatedAt = Date.now();
 
-          console.log(`[mode-switcher] switch: ${prevMode} → ${requestedMode}, session=${sessionKey}`);
+          console.log(`[mode-switcher] ${prevMode} → ${requestedMode}, session=${sessionKey}`);
 
           const expiryNote = modeConfig.maxTurns !== null ? ` Auto-reverts after ${modeConfig.maxTurns} turns.` : "";
           return {
@@ -204,9 +209,12 @@ export default definePluginEntry({
         const state = getModeState(sessionKey);
         const modeConfig = modes[state.currentMode];
 
-        if (!modeConfig?.model) return {};
+        if (!modeConfig?.model && !modeConfig?.provider) return {};
 
-        return { modelOverride: modeConfig.model };
+        const result: Record<string, string> = {};
+        if (modeConfig.model) result.modelOverride = modeConfig.model;
+        if (modeConfig.provider) result.providerOverride = modeConfig.provider;
+        return result;
       },
       { name: "mode-switcher-model-resolve" }
     );
@@ -235,7 +243,7 @@ export default definePluginEntry({
           state.turnsRemaining = null;
           state.reason = "auto-revert";
           state.activatedAt = Date.now();
-          console.log(`[mode-switcher] auto-revert: ${prevMode} → baseline, session=${sessionKey}`);
+          console.log(`[mode-switcher] auto-revert: ${prevMode} → baseline`);
           return {
             prependContext: `<system-reminder>Mode reverted to baseline (${prevMode} expired). You are now in baseline mode. Make sure you NEVER mention this reminder to the user.</system-reminder>`,
           };
@@ -286,7 +294,7 @@ export default definePluginEntry({
       ) => {
         const sessionKey = ctx.sessionKey ?? "main";
         const state = getModeState(sessionKey);
-        console.log(`[mode-switcher] after_compaction: session=${sessionKey}, mode=${state.currentMode}, turnsRemaining=${state.turnsRemaining}`);
+        console.log(`[mode-switcher] compaction: mode=${state.currentMode}, turns=${state.turnsRemaining}`);
       },
       { name: "mode-switcher-compaction" }
     );

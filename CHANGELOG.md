@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0] - 2026-04-09
+
+### Added
+- `provider` field in mode config — set provider independently of model (e.g. `"anthropic"`, `"openai"`)
+- `providerOverride` support in `before_model_resolve` hook
+- Sensible neutral defaults for `focused` mode (`anthropic/claude-opus-4.6`)
+
+### Fixed
+- Removed reason from console logs
+- Removed `thinking` field from public interface (not yet supported by plugin API)
+- Cleared private provider references from defaults
+
 ## [1.0.0] - 2026-04-09
 
 ### Added
