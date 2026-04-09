@@ -1,7 +1,7 @@
 {
   "id": "mode-switcher",
   "name": "Mode Switcher",
-  "description": "Self-escalating conversation modes — upgrades to a smarter model when it matters, reverts automatically when it's done.",
+  "description": "Self-escalating model routing — upgrades to a smarter model when it's needed, reverts automatically when it's done.",
   "configSchema": {
     "type": "object",
     "properties": {
