@@ -1,6 +1,16 @@
 # openclaw-mode-switcher
 
-A plugin for [OpenClaw](https://openclaw.dev) that gives agents a `switch_mode` tool to self-escalate to a more capable model when a task demands it. The agent calls `switch_mode(mode: "focused", reason: "...")`, the plugin overrides the model for the next turn, injects a countdown reminder, and auto-reverts to baseline after N turns.
+Give your OpenClaw agent a `switch_mode` tool so it can self-escalate to a more capable model when it needs one — then automatically revert when the hard part is done.
+
+- `switch_mode(mode, reason)` to upgrade capability mid-conversation
+- `before_model_resolve` hook overrides the active model for boosted turns
+- `before_prompt_build` injects a live countdown so the agent tracks its remaining turns
+- Auto-reverts to baseline after N turns — no manual reset needed
+- `extend` pseudo-mode resets the countdown without changing mode
+- State survives compaction via `after_compaction` hook
+- Fully configurable: define your own modes, models, and turn limits
+
+---
 
 ## Install
 
@@ -8,45 +18,41 @@ A plugin for [OpenClaw](https://openclaw.dev) that gives agents a `switch_mode` 
 openclaw plugins install clawhub:openclaw-mode-switcher
 ```
 
+Or from the GitHub repo directly:
+
+```
+openclaw plugins install scriptive-au/openclaw-mode-switcher
+```
+
+---
+
 ## How it works
 
-### The `switch_mode` tool
+The plugin registers a `switch_mode` tool the agent can call at any point. When called:
 
-The agent is given a `switch_mode` tool at runtime. It accepts two required parameters:
-
-- **`mode`** — the mode name to switch to (e.g. `"focused"`), or `"extend"` to reset the countdown without changing mode
-- **`reason`** — a specific explanation of why more capability is needed (logged for cost tracking)
+1. The plugin records the new mode in session state
+2. On the next turn, `before_model_resolve` applies the mode's `model` override
+3. `before_prompt_build` prepends a status reminder with turns remaining
+4. After `maxTurns` turns, the mode auto-reverts to baseline
 
 ### Modes
 
-Each mode is a named configuration that can override the model, thinking budget, and turn limit. Modes are merged at registration time — if a mode sets `model: null`, the session default is used unchanged.
-
-### Turn countdown and auto-revert
-
-When a mode has a `maxTurns` limit, the plugin counts down each turn via the `before_prompt_build` hook, injecting a hidden system reminder with the remaining count. At `T-1` the agent is nudged to extend or de-escalate. When the countdown reaches zero, the mode auto-reverts to `baseline` on the next turn.
-
-The `extend` pseudo-mode resets the countdown to `maxTurns` without changing the active mode.
-
-### State across compaction
-
-Mode state (current mode, turns remaining, reason) is preserved across context compaction via the `after_compaction` hook — the agent picks up exactly where it left off.
-
-## Default modes
-
 | Mode | Description | Model | Max turns |
-|------|-------------|-------|-----------|
-| `baseline` | Default mode — chat, quick tasks, routine work | *(session default)* | unlimited |
-| `focused` | Extended reasoning — debugging, multi-step analysis, careful thinking | `github-copilot/claude-opus-4.6` | 4 |
+|---|---|---|---|
+| `baseline` | Default — chat, quick tasks, routine work | _(session default)_ | unlimited |
+| `focused` | Extended reasoning — debugging, analysis, careful thinking | `github-copilot/claude-opus-4.6` | 4 |
 
-## ⚠️ Important: model configuration
+The agent also accepts `extend` as the mode value to reset the countdown without switching modes.
 
-The default `focused` mode uses `github-copilot/claude-opus-4.6`, which requires a **GitHub Copilot provider** configured in OpenClaw. If you're on a different provider (e.g. Anthropic direct, AWS Bedrock, OpenRouter), this model identifier will fail.
+### ⚠️ Model note
 
-**You must override the `focused` mode model in your `openclaw.json`** to use a model available to your provider. See the configuration section below.
+The default `focused` mode targets `github-copilot/claude-opus-4.6`, which requires a GitHub Copilot provider configured in OpenClaw. If you're using Anthropic, OpenAI, or another provider directly, override the model in your config (see below).
+
+---
 
 ## Configuration
 
-Override modes in your `openclaw.json`:
+Add to your `~/.openclaw/openclaw.json`:
 
 ```json
 {
@@ -58,13 +64,13 @@ Override modes in your `openclaw.json`:
         "config": {
           "modes": {
             "baseline": {
-              "description": "Default mode",
+              "description": "Default mode. Chat, quick tasks, routine work.",
               "model": null,
               "thinking": null,
               "maxTurns": null
             },
             "focused": {
-              "description": "Extended reasoning",
+              "description": "Extended reasoning. Debugging, multi-step analysis, careful thinking.",
               "model": "anthropic/claude-opus-4-6",
               "thinking": null,
               "maxTurns": 4
@@ -77,51 +83,44 @@ Override modes in your `openclaw.json`:
 }
 ```
 
-When you supply a `modes` config, it **replaces** the defaults entirely — include both `baseline` and `focused` (or whatever modes you want) in full.
+> `allowPromptInjection: true` is required — without it the mode status reminder won't be injected into prompts.
 
-### Mode properties
+You can define as many modes as you like. A mode with `model: null` uses the session's default model.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `description` | `string` | Shown in the tool definition so the agent knows when to use each mode |
-| `model` | `string \| null` | Model identifier to use when active. `null` = use session default |
-| `thinking` | `string \| null` | Thinking budget hint passed to the model. `null` = model default |
-| `maxTurns` | `number \| null` | Turns before auto-revert to baseline. `null` = no limit |
-
-## Escalation triggers
-
-The `switch_mode` tool description includes these guidance notes, which the agent treats as obligations:
-
-**When to escalate:**
-- You produced an answer but can't verify it's correct — escalate before responding
-- You made an assumption about an API, config, or system behaviour that you haven't confirmed
-- You attempted a solution and it failed — do not try a third variation at baseline
-- The task requires holding multiple interacting systems in mind simultaneously
-- You're generating plausible-sounding output but feel uncertain about correctness
-- The task is high-stakes: client-facing, financial, production deployment, or irreversible
-
-**When to de-escalate:**
-- The hard thinking is done and you're executing a clear, verified plan
-- You're doing routine file operations, lookups, or mechanical transformations
-- The remaining work is straightforward and you're confident in the approach
+---
 
 ## System prompt integration
 
-Agents need instructions in their system prompt telling them when to use `switch_mode`. Here's a copy-paste snippet to add to your agent's system prompt:
+The plugin registers the tool automatically, but your agent needs guidance on *when* to use it. Add something like this to your `AGENTS.md`:
 
-```
-You have access to a switch_mode tool. Use it to self-escalate when a task exceeds
-your current capability. Treat the escalation triggers in the tool description as
-obligations — escalate before responding if you're uncertain, not after. Do not mention
-mode switches to the user.
+```markdown
+## Operating Modes
+
+Use `switch_mode` to adjust reasoning depth for the current task.
+
+**Escalate (treat as obligations, not suggestions) when:**
+- You produced an answer but can't verify it's correct
+- You made an assumption about an API, config, or behaviour you haven't confirmed
+- A solution failed and you don't want to guess at a third variation
+- The task requires holding multiple interacting systems in mind simultaneously
+- The work is high-stakes — client-facing, financial, production, or irreversible
+
+**De-escalate when:**
+- The hard thinking is done and you're executing a clear plan
+- You're doing routine file ops, lookups, or mechanical transformations
+
+Do NOT mention mode changes to the user. Switching modes is like shifting gears — not admitting failure.
 ```
 
-Without this (or similar) instruction, the agent may not use the tool proactively.
+---
 
 ## Requirements
 
 - OpenClaw >= `2026.3.24-beta.2`
+- Plugin API >= `2026.3.24-beta.2`
+
+---
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT — [Roman Yakobnyuk / Scriptive](https://scriptive.com.au)
