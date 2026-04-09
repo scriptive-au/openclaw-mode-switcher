@@ -179,7 +179,7 @@ export default definePluginEntry({
           state.reason = reason;
           state.activatedAt = Date.now();
 
-          console.log(`[mode-switcher] switch: ${prevMode} → ${requestedMode}, reason="${reason}", session=${sessionKey}`);
+          console.log(`[mode-switcher] switch: ${prevMode} → ${requestedMode}, session=${sessionKey}`);
 
           const expiryNote = modeConfig.maxTurns !== null ? ` Auto-reverts after ${modeConfig.maxTurns} turns.` : "";
           return {
