@@ -1,0 +1,51 @@
+{
+  "id": "mode-switcher",
+  "name": "Mode Switcher",
+  "description": "Self-escalating model routing — agents call switch_mode() to upgrade to a more capable model when needed, then auto-revert after N turns.",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "modes": {
+        "type": "object",
+        "description": "Map of mode name to mode configuration. Each mode can override the model, thinking, and turn limit.",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Human-readable description shown in the tool definition"
+            },
+            "model": {
+              "type": ["string", "null"],
+              "description": "Model identifier to use when this mode is active. null = use the session default."
+            },
+            "thinking": {
+              "type": ["string", "null"],
+              "description": "Thinking budget or mode hint passed to the model. null = model default."
+            },
+            "maxTurns": {
+              "type": ["number", "null"],
+              "description": "Number of turns before auto-reverting to baseline. null = no limit."
+            }
+          },
+          "required": ["description"],
+          "additionalProperties": false
+        },
+        "example": {
+          "baseline": {
+            "description": "Default mode",
+            "model": null,
+            "thinking": null,
+            "maxTurns": null
+          },
+          "focused": {
+            "description": "Extended reasoning",
+            "model": "anthropic/claude-opus-4-6",
+            "thinking": null,
+            "maxTurns": 4
+          }
+        }
+      }
+    }
+  }
+}
