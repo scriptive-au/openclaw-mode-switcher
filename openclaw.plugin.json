@@ -7,7 +7,7 @@
     "properties": {
       "modes": {
         "type": "object",
-        "description": "Map of mode name to mode configuration. Each mode can override the model, thinking, and turn limit.",
+        "description": "Map of mode name to mode configuration. Each mode can override the model, provider, and turn limit.",
         "additionalProperties": {
           "type": "object",
           "properties": {
@@ -17,11 +17,15 @@
             },
             "model": {
               "type": ["string", "null"],
-              "description": "Model identifier to use when this mode is active. null = use the session default."
+              "description": "Bare model name (e.g. claude-opus-4-6). null = session default."
+            },
+            "provider": {
+              "type": ["string", "null"],
+              "description": "Provider name (e.g. anthropic, openai). null = session default."
             },
             "thinking": {
               "type": ["string", "null"],
-              "description": "Thinking budget or mode hint passed to the model. null = model default."
+              "description": "Reserved for future use. null = model default."
             },
             "maxTurns": {
               "type": ["number", "null"],
@@ -35,12 +39,14 @@
           "baseline": {
             "description": "Default mode",
             "model": null,
+            "provider": null,
             "thinking": null,
             "maxTurns": null
           },
           "focused": {
             "description": "Extended reasoning",
-            "model": "anthropic/claude-opus-4-6",
+            "model": "claude-opus-4-6",
+            "provider": "anthropic",
             "thinking": null,
             "maxTurns": 4
           }
