@@ -49,13 +49,11 @@ Add to your `~/.openclaw/openclaw.json`. Define as many modes as you need — po
             "baseline": {
               "description": "Default mode. Chat, quick tasks, routine work.",
               "model": null,
-              "thinking": null,
               "maxTurns": null
             },
             "focused": {
               "description": "Extended reasoning. Debugging, multi-step analysis, careful thinking.",
               "model": "anthropic/claude-opus-4-6",
-              "thinking": null,
               "maxTurns": 4
             }
           }
@@ -74,7 +72,6 @@ Add to your `~/.openclaw/openclaw.json`. Define as many modes as you need — po
 |---|---|---|
 | `description` | string | Shown in the tool definition the agent sees |
 | `model` | string \| null | Model to use when this mode is active. `null` = session default |
-| `thinking` | string \| null | Thinking budget hint passed to the model. `null` = model default |
 | `maxTurns` | number \| null | Turns before auto-reverting to baseline. `null` = no limit |
 
 A mode with `model: null` uses the session's default model — useful for a mode that changes behaviour via the system prompt only.
