@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] - 2026-04-09
+
+### Changed
+- Prompt injection now only fires at T-2 (expiry warning) and T-0 (auto-revert) — no more per-turn status noise
+- Clarified that `model` and `provider` are always independent fields — no combined `provider/model` parsing
+
 ## [1.1.0] - 2026-04-09
 
 ### Added

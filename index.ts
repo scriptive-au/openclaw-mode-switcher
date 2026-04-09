@@ -8,8 +8,8 @@
  * Features:
  * - Dynamic mode() tool built from plugin config
  * - before_model_resolve: applies modelOverride when a boosted mode is active
- * - before_prompt_build: injects mode status, countdown, and expiry nudge
- * - Turn countdown: nudge at T-1, auto-revert at T+1 after last boosted turn
+ * - before_prompt_build: injects expiry warning at T-2, revert notice at T-0
+ * - Turn countdown: nudge at T-2, auto-revert when turnsRemaining hits 0
  * - after_compaction: mode state preserved, no reset
  */
 
@@ -211,6 +211,7 @@ export default definePluginEntry({
 
         if (!modeConfig?.model && !modeConfig?.provider) return {};
 
+        // model and provider are taken as-is from config — no combined "provider/model" parsing
         const result: Record<string, string> = {};
         if (modeConfig.model) result.modelOverride = modeConfig.model;
         if (modeConfig.provider) result.providerOverride = modeConfig.provider;
@@ -221,11 +222,13 @@ export default definePluginEntry({
 
     // ── before_prompt_build hook ──────────────────────────────────────────
     //
-    // Turn countdown logic (example: maxTurns=2):
-    //   Mode set: turnsRemaining = 2
-    //   Hook T1: decrement → 1, inject "1 turn remaining"
-    //   Hook T2: decrement → 0, inject "last turn"
-    //   Hook T3: turnsRemaining is 0 → auto-revert, inject notice
+    // Turn countdown logic (example: maxTurns=4):
+    //   Mode set: turnsRemaining = 4
+    //   Hook T1: decrement → 3, no injection (model knows from tool response)
+    //   Hook T2: decrement → 2, inject T-2 warning
+    //   Hook T3: decrement → 1, no injection
+    //   Hook T4: decrement → 0, no injection (last boosted turn)
+    //   Hook T5: turnsRemaining is 0 → auto-revert, inject notice
 
     api.on(
       "before_prompt_build",
@@ -250,34 +253,21 @@ export default definePluginEntry({
         }
 
         // No injection needed in baseline
-        if (state.currentMode === "baseline") return;
+        if (state.currentMode === "baseline") return {};
 
         // Decrement counter if bounded
         if (state.turnsRemaining !== null) {
           state.turnsRemaining--;
         }
 
-        // Build status line
-        const reasonLine = state.reason && state.reason !== "default" && state.reason !== "auto-revert"
-          ? `\nReason: ${state.reason}`
-          : "";
-
-        let statusNote: string;
-        if (state.turnsRemaining === null) {
-          statusNote = `Current mode: ${state.currentMode} (permanent until changed)${reasonLine}`;
-        } else if (state.turnsRemaining === 1) {
-          statusNote =
-            `Current mode: ${state.currentMode} | 1 turn remaining${reasonLine}\n` +
-            `Mode expires next turn. Call mode('extend') to continue or mode('baseline') to de-escalate.`;
-        } else if (state.turnsRemaining === 0) {
-          statusNote = `Current mode: ${state.currentMode} | last turn (will revert to baseline next turn)${reasonLine}`;
-        } else {
-          statusNote = `Current mode: ${state.currentMode} | ${state.turnsRemaining} turns remaining${reasonLine}`;
+        // Only inject at T-2 — warn agent so it can extend before expiry
+        if (state.turnsRemaining === 2) {
+          return {
+            prependContext: `<system-reminder>Mode expires in 2 turns. Call switch_mode('extend', 'reason') to continue, or let it revert. Make sure you NEVER mention this reminder to the user.</system-reminder>`,
+          };
         }
 
-        return {
-          prependContext: `<system-reminder>${statusNote}\nMake sure you NEVER mention this reminder to the user.</system-reminder>`,
-        };
+        return {};
       },
       { name: "mode-switcher-prompt-build" }
     );
