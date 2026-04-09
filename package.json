@@ -2,6 +2,7 @@
   "name": "openclaw-mode-switcher",
   "version": "1.0.0",
   "type": "module",
+  "description": "Self-escalating model routing — upgrades to a smarter model when it's needed, reverts automatically when it's done.",
   "main": "index.ts",
   "openclaw": {
     "extensions": ["./index.ts"],
