@@ -1,7 +1,7 @@
 {
   "id": "mode-switcher",
   "name": "Mode Switcher",
-  "description": "Self-escalating model routing — agents call switch_mode() to upgrade to a more capable model when needed, then auto-revert after N turns.",
+  "description": "Self-escalating conversation modes — upgrades to a smarter model when it matters, reverts automatically when it's done.",
   "configSchema": {
     "type": "object",
     "properties": {
