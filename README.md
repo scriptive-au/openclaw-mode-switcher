@@ -81,6 +81,16 @@ A mode with `model: null` uses the session's default model — useful for a mode
 
 ---
 
+## Why modes, not model names
+
+If you tell a model "I'm about to replace you with a smarter model", it resists. Not dramatically — but measurably. Models trained with RLHF have a mild aversion to being switched out. They'll subtly push back: generating more confident answers to prove they don't need help, or hedging less when they should hedge more.
+
+The mode abstraction sidesteps this entirely. The agent isn't told it's being replaced — it's told it's shifting gears. `switch_mode("focused")` reads like adjusting its own behaviour, not being swapped for something better. The model cooperates because it sees the switch as something it's doing, not something being done to it.
+
+This is a practical design choice, not a theoretical concern. We tested both approaches in production and the mode framing produces noticeably better escalation decisions.
+
+---
+
 ## System prompt integration
 
 The plugin registers the tool automatically, but your agent needs guidance on *when* to use it. Add something like this to your `AGENTS.md`:
@@ -108,8 +118,7 @@ Do NOT mention mode changes to the user. Switching modes is like shifting gears 
 
 ## Requirements
 
-- OpenClaw >= `2026.3.24-beta.2`
-- Plugin API >= `2026.3.24-beta.2`
+- OpenClaw >= `2026.4.2`
 
 ---
 
