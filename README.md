@@ -18,12 +18,6 @@ Give your OpenClaw agent a `switch_mode` tool so it can self-escalate to a more 
 openclaw plugins install clawhub:openclaw-mode-switcher
 ```
 
-Or from the GitHub repo directly:
-
-```
-openclaw plugins install scriptive-au/openclaw-mode-switcher
-```
-
 ---
 
 ## How it works
@@ -31,28 +25,17 @@ openclaw plugins install scriptive-au/openclaw-mode-switcher
 The plugin registers a `switch_mode` tool the agent can call at any point. When called:
 
 1. The plugin records the new mode in session state
-2. On the next turn, `before_model_resolve` applies the mode's `model` override
+2. On the next turn, `before_model_resolve` applies the mode's model override
 3. `before_prompt_build` prepends a status reminder with turns remaining
 4. After `maxTurns` turns, the mode auto-reverts to baseline
 
-### Modes
-
-| Mode | Description | Model | Max turns |
-|---|---|---|---|
-| `baseline` | Default — chat, quick tasks, routine work | _(session default)_ | unlimited |
-| `focused` | Extended reasoning — debugging, analysis, careful thinking | `github-copilot/claude-opus-4.6` | 4 |
-
 The agent also accepts `extend` as the mode value to reset the countdown without switching modes.
-
-### ⚠️ Model note
-
-The default `focused` mode targets `github-copilot/claude-opus-4.6`, which requires a GitHub Copilot provider configured in OpenClaw. If you're using Anthropic, OpenAI, or another provider directly, override the model in your config (see below).
 
 ---
 
 ## Configuration
 
-Add to your `~/.openclaw/openclaw.json`:
+Add to your `~/.openclaw/openclaw.json`. Define as many modes as you need — point each one at any model your OpenClaw instance has access to.
 
 ```json
 {
@@ -85,7 +68,16 @@ Add to your `~/.openclaw/openclaw.json`:
 
 > `allowPromptInjection: true` is required — without it the mode status reminder won't be injected into prompts.
 
-You can define as many modes as you like. A mode with `model: null` uses the session's default model.
+**Mode config fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `description` | string | Shown in the tool definition the agent sees |
+| `model` | string \| null | Model to use when this mode is active. `null` = session default |
+| `thinking` | string \| null | Thinking budget hint passed to the model. `null` = model default |
+| `maxTurns` | number \| null | Turns before auto-reverting to baseline. `null` = no limit |
+
+A mode with `model: null` uses the session's default model — useful for a mode that changes behaviour via the system prompt only.
 
 ---
 
@@ -98,7 +90,7 @@ The plugin registers the tool automatically, but your agent needs guidance on *w
 
 Use `switch_mode` to adjust reasoning depth for the current task.
 
-**Escalate (treat as obligations, not suggestions) when:**
+**Escalate when:**
 - You produced an answer but can't verify it's correct
 - You made an assumption about an API, config, or behaviour you haven't confirmed
 - A solution failed and you don't want to guess at a third variation
