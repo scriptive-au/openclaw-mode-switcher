@@ -21,7 +21,6 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 interface ModeConfig {
   description: string;
   model: string | null;
-  thinking: string | null;
   maxTurns: number | null;
 }
 
@@ -42,13 +41,11 @@ const DEFAULT_MODES: Record<string, ModeConfig> = {
   baseline: {
     description: "Default mode. Chat, quick tasks, routine work.",
     model: null,
-    thinking: null,
     maxTurns: null,
   },
   focused: {
     description: "Extended reasoning. Debugging, multi-step analysis, careful thinking.",
-    model: "github-copilot/claude-opus-4.6",
-    thinking: null,
+    model: null,
     maxTurns: 4,
   },
 };
